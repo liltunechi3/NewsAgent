@@ -16,6 +16,8 @@ npm start                # real run
 
 ## Summaries (Claude)
 
+Each article is rewritten in casual, easy-to-follow Bahasa Indonesia: a headline, a short anecdote/analogy (marked as an illustration, no invented facts), an actionable insight, and exactly 5 takeaways. Edit the `SYSTEM` prompt in `src/summarizer.js` to change tone or structure. Because the output is longer than a plain summary, a full digest of 8 articles is sent as ~2 WhatsApp messages and costs roughly twice as much per article.
+
 Summaries use Claude via the Anthropic API. The default model is `claude-haiku-4-5` (cheapest; roughly $1/month at ~16 articles/day). Override it with `ANTHROPIC_MODEL`. Larger models cost more and think before answering, which can need a higher `max_tokens` in `src/summarizer.js`.
 
 ## WhatsApp providers (`WHATSAPP_PROVIDER`)

@@ -30,8 +30,9 @@ function open(dbPath) {
       snippet TEXT,
       published_at TEXT,
       headline TEXT,
+      anecdote TEXT,
       insight TEXT,
-      action TEXT,
+      takeaways TEXT,
       summarized INTEGER NOT NULL DEFAULT 0,
       sent INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -43,6 +44,12 @@ function open(dbPath) {
       sent_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Databases created before the anecdote/takeaways format lack these columns.
+  const columns = db.prepare('PRAGMA table_info(articles)').all().map((c) => c.name);
+  for (const col of ['anecdote', 'takeaways']) {
+    if (!columns.includes(col)) db.exec(`ALTER TABLE articles ADD COLUMN ${col} TEXT`);
+  }
 
   const insert = db.prepare(`
     INSERT OR IGNORE INTO articles (link_hash, title, link, source, category, snippet, published_at)
@@ -73,8 +80,9 @@ function open(dbPath) {
     getUnsummarized(limit) {
       return db.prepare('SELECT * FROM articles WHERE summarized = 0 AND sent = 0 ORDER BY id DESC LIMIT ?').all(limit);
     },
-    saveSummary(id, { headline, insight, action }) {
-      db.prepare('UPDATE articles SET headline=?, insight=?, action=?, summarized=1 WHERE id=?').run(headline, insight, action, id);
+    saveSummary(id, { headline, anecdote, insight, takeaways }) {
+      db.prepare('UPDATE articles SET headline=?, anecdote=?, insight=?, takeaways=?, summarized=1 WHERE id=?')
+        .run(headline, anecdote, insight, JSON.stringify(takeaways), id);
     },
     getUnsentSummarized() {
       return db.prepare('SELECT * FROM articles WHERE summarized = 1 AND sent = 0 ORDER BY COALESCE(published_at, created_at) DESC').all();

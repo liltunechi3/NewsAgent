@@ -22,14 +22,26 @@ function curate(articles, { max = config.digestMax, maxPerSource = config.maxPer
   return picked;
 }
 
+function parseTakeaways(raw) {
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function formatArticle(a, n) {
-  return [
-    `*${n}. ${a.headline}*`,
-    `💡 Insight: ${a.insight}`,
-    `✅ Action: ${a.action}`,
-    `📌 Sumber: ${a.source}`,
-    `🔗 ${a.link}`,
-  ].join('\n');
+  const lines = [`*${n}. ${a.headline}*`];
+  if (a.anecdote) lines.push(`📖 ${a.anecdote}`);
+  lines.push(`💡 *Insight:* ${a.insight}`);
+  const takeaways = parseTakeaways(a.takeaways);
+  if (takeaways.length) {
+    lines.push('📌 *5 Takeaways:*', ...takeaways.map((t, i) => `${i + 1}. ${t}`));
+  }
+  lines.push(`🗞️ Sumber: ${a.source}`, `🔗 ${a.link}`);
+  return lines.join('\n');
 }
 
 function formatDigest(articles, date = new Date()) {

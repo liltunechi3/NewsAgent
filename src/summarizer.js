@@ -1,26 +1,38 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const config = require('./config');
 
-const SYSTEM = `Kamu adalah analis digital marketing yang menulis ringkasan berita untuk seorang konsultan dan content creator marketing di Indonesia.
+const SYSTEM = `Kamu adalah teman ngobrol yang jago digital marketing. Kamu menjelaskan berita marketing ke seorang konsultan dan content creator di Indonesia dengan bahasa santai, mudah dipahami, tanpa jargon berlebihan (kalau ada istilah teknis, jelaskan singkat).
 Balas HANYA dengan JSON valid (tanpa markdown) berformat:
-{"headline": "...", "insight": "...", "action": "..."}
+{"headline": "...", "cerita": "...", "insight": "...", "takeaways": ["...", "...", "...", "...", "..."]}
 - headline: maksimal 10 kata, menarik, Bahasa Indonesia.
-- insight: 2-3 kalimat, jelaskan isi berita dan kenapa penting bagi marketer.
-- action: 1-2 kalimat, langkah praktis yang bisa langsung dilakukan untuk konten atau konsultasi klien.
-Gunakan hanya informasi dari artikel; jangan mengarang angka atau fakta.`;
+- cerita: 2-3 kalimat berupa anekdot atau analogi sehari-hari yang bikin isi berita gampang dibayangkan. Mulai dengan kata seperti "Bayangin..." atau "Misalnya...". Ini ilustrasi, jadi JANGAN menyebut orang, brand, atau angka nyata yang tidak ada di artikel.
+- insight: 2-3 kalimat yang menjelaskan kenapa ini penting dan apa yang bisa langsung dilakukan untuk konten atau klien (actionable).
+- takeaways: TEPAT 5 poin, masing-masing satu kalimat pendek dan konkret.
+Gaya bahasa: santai seperti ngobrol (pakai "kamu"), boleh sedikit humor, tapi tetap akurat. Fakta dan angka hanya dari artikel; jangan mengarang.`;
 
 let client;
 const getClient = () => (client ||= new Anthropic());
+
+const TAKEAWAY_COUNT = 5;
 
 /** Extracts the JSON object from a model reply, tolerating stray prose or code fences. */
 function parseSummary(text) {
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('no JSON in model reply');
   const obj = JSON.parse(match[0]);
-  for (const k of ['headline', 'insight', 'action']) {
+  for (const k of ['headline', 'cerita', 'insight']) {
     if (typeof obj[k] !== 'string' || !obj[k].trim()) throw new Error(`missing field: ${k}`);
   }
-  return { headline: obj.headline.trim(), insight: obj.insight.trim(), action: obj.action.trim() };
+  const takeaways = Array.isArray(obj.takeaways)
+    ? obj.takeaways.filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim())
+    : [];
+  if (takeaways.length < TAKEAWAY_COUNT) throw new Error(`need ${TAKEAWAY_COUNT} takeaways, got ${takeaways.length}`);
+  return {
+    headline: obj.headline.trim(),
+    anecdote: obj.cerita.trim(),
+    insight: obj.insight.trim(),
+    takeaways: takeaways.slice(0, TAKEAWAY_COUNT),
+  };
 }
 
 const userPrompt = (a) =>
@@ -29,7 +41,7 @@ const userPrompt = (a) =>
 async function viaClaude(article, anthropic = getClient()) {
   const msg = await anthropic.messages.create({
     model: config.anthropicModel,
-    max_tokens: 600,
+    max_tokens: 1500,
     system: SYSTEM,
     messages: [{ role: 'user', content: userPrompt(article) }],
   });
