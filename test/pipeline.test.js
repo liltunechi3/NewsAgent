@@ -90,9 +90,25 @@ test('formatDigest tolerates rows summarized in the old format', () => {
   assert.doesNotMatch(msg, /Takeaways/);
 });
 
-test('chunkMessage splits only between articles', () => {
-  const chunks = chunkMessage(['a'.repeat(30), 'b'.repeat(30), 'c'.repeat(30)].join('\n\n'), 70);
+test('chunkMessage keeps one bubble when it fits and never exceeds two', () => {
+  const article = (n) => `*${n}. Judul*\n${'x'.repeat(900)}`;
+  const header = 'HEADER';
+  const short = [header, article(1), article(2)].join('\n\n');
+  assert.strictEqual(chunkMessage(short).length, 1);
+
+  const five = [header, ...[1, 2, 3, 4, 5].map(article)].join('\n\n');   // ~4.7k chars, under the limit
+  assert.strictEqual(chunkMessage(five).length, 1);
+
+  const big = [header, ...[1, 2, 3, 4, 5].map((n) => article(n) + 'y'.repeat(600))].join('\n\n'); // ~7.5k chars
+  const chunks = chunkMessage(big);
   assert.strictEqual(chunks.length, 2);
+  assert.ok(chunks[0].startsWith('HEADER'));
+  assert.strictEqual(chunks.join('\n\n'), big);                          // nothing lost, cut only between articles
+  assert.ok(Math.abs(chunks[0].length - chunks[1].length) < 2000);        // balanced, not 1 giant + 1 tiny
+
+  const huge = [header, ...Array.from({ length: 12 }, (_, i) => article(i + 1))].join('\n\n');
+  assert.strictEqual(chunkMessage(huge).length, 2);                        // hard cap
+  assert.strictEqual(chunkMessage('solo').length, 1);
 });
 
 test('database migrates a pre-existing old-schema table', () => {

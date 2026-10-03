@@ -5,10 +5,10 @@ const SYSTEM = `Kamu adalah teman ngobrol yang jago digital marketing. Kamu menj
 Balas HANYA dengan JSON valid (tanpa markdown) berformat:
 {"headline": "...", "cerita": "...", "insight": "...", "takeaways": ["...", "...", "...", "...", "..."]}
 - headline: maksimal 10 kata, menarik, Bahasa Indonesia.
-- cerita: 2-3 kalimat berupa anekdot atau analogi sehari-hari yang bikin isi berita gampang dibayangkan. Mulai dengan kata seperti "Bayangin..." atau "Misalnya...". Ini ilustrasi, jadi JANGAN menyebut orang, brand, atau angka nyata yang tidak ada di artikel.
-- insight: 2-3 kalimat yang menjelaskan kenapa ini penting dan apa yang bisa langsung dilakukan untuk konten atau klien (actionable).
-- takeaways: TEPAT 5 poin, masing-masing satu kalimat pendek dan konkret.
-Gaya bahasa: santai seperti ngobrol (pakai "kamu"), boleh sedikit humor, tapi tetap akurat. Fakta dan angka hanya dari artikel; jangan mengarang.`;
+- cerita: 1-2 kalimat (maksimal sekitar 200 karakter) berupa anekdot atau analogi sehari-hari yang bikin isi berita gampang dibayangkan. Mulai dengan kata seperti "Bayangin..." atau "Misalnya...". Ini ilustrasi, jadi JANGAN menyebut orang, brand, atau angka nyata yang tidak ada di artikel.
+- insight: 1-2 kalimat (maksimal sekitar 200 karakter) yang menjelaskan kenapa ini penting dan apa yang bisa langsung dilakukan untuk konten atau klien (actionable).
+- takeaways: TEPAT 5 poin, masing-masing satu kalimat sangat pendek (maksimal 12 kata) dan konkret.
+Semua bagian harus ringkas dan padat; buang basa-basi. Gaya bahasa: santai seperti ngobrol (pakai "kamu"), boleh sedikit humor, tapi tetap akurat. Fakta dan angka hanya dari artikel; jangan mengarang.`;
 
 let client;
 const getClient = () => (client ||= new Anthropic());
@@ -41,7 +41,7 @@ const userPrompt = (a) =>
 async function viaClaude(article, anthropic = getClient()) {
   const msg = await anthropic.messages.create({
     model: config.anthropicModel,
-    max_tokens: 1500,
+    max_tokens: 1000,
     system: SYSTEM,
     messages: [{ role: 'user', content: userPrompt(article) }],
   });
