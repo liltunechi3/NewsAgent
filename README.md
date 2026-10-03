@@ -14,6 +14,10 @@ npm run dry-run          # runs the whole pipeline, prints the digest, sends not
 npm start                # real run
 ```
 
+## AI provider (`AI_PROVIDER`)
+
+Summaries can come from **Gemini** (has a free tier; get a key at aistudio.google.com) or **Claude**. If `AI_PROVIDER` is not set, Gemini is used when `GEMINI_API_KEY` is set, otherwise Claude. Models are configurable with `GEMINI_MODEL` (default `gemini-2.5-flash`) and `ANTHROPIC_MODEL`. Note: on Gemini's free tier, Google may use inputs to improve its models, and rate limits apply; articles that hit a limit are skipped and logged.
+
 ## WhatsApp providers (`WHATSAPP_PROVIDER`)
 
 | Provider | Where it works | Notes |
@@ -47,7 +51,7 @@ src/index.js            pipeline orchestrator (runDigest)
 src/config.js           sources and settings
 src/database.js         SQLite store + dedup
 src/sources/            rss-fetcher.js, web-scraper.js
-src/summarizer.js       Claude summaries
+src/summarizer.js       AI summaries
 src/formatter.js        curation + WhatsApp formatting
 src/whatsapp-sender.js  fonnte / wwebjs / console delivery
 api/digest.js           Vercel cron endpoint

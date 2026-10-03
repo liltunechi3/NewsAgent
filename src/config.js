@@ -3,6 +3,10 @@ require('dotenv').config({ quiet: true });
 const onVercel = Boolean(process.env.VERCEL);
 
 module.exports = {
+  // "gemini" or "claude". Defaults to gemini when GEMINI_API_KEY is set, otherwise claude.
+  aiProvider: process.env.AI_PROVIDER || (process.env.GEMINI_API_KEY ? 'gemini' : 'claude'),
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
   anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
   timezone: 'Asia/Jakarta',
   // Vercel's filesystem is read-only except /tmp, and /tmp does not persist between invocations.
