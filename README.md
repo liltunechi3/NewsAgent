@@ -16,7 +16,7 @@ npm start                # real run
 
 ## Summaries (Claude)
 
-Each article is rewritten in easy-to-follow Bahasa Indonesia: a headline with the release date (`Title - 3 Okt 2026`; omitted when the source gives no date), a 3-4 sentence explanation in plain language that ends with a short everyday anecdote/analogy (the anecdote is an illustration, no invented facts), a 1-2 sentence actionable insight, and exactly 3 short takeaways. Edit the `SYSTEM` prompt in `src/summarizer.js` to change tone or structure. The digest is sent as one WhatsApp bubble when it fits in ~5,000 characters, otherwise as at most two (cut between articles); see `chunkMessage` in `src/formatter.js`.
+Each article is rewritten in easy-to-follow Bahasa Indonesia: a headline with the release date (`Title - 3 Okt 2026`; omitted when the source gives no date), a 3-4 sentence explanation in casual, plain language (no anecdotes or analogies), a 1-2 sentence actionable insight, and exactly 3 short takeaways. Edit the `SYSTEM` prompt in `src/summarizer.js` to change tone or structure. The digest is sent as one WhatsApp bubble when it fits in ~5,000 characters, otherwise as at most two (cut between articles); see `chunkMessage` in `src/formatter.js`.
 
 Summaries use Claude via the Anthropic API. The default model is `claude-haiku-4-5` (cheapest; roughly $1/month at ~16 articles/day). Override it with `ANTHROPIC_MODEL`. Larger models cost more and think before answering, which can need a higher `max_tokens` in `src/summarizer.js`.
 

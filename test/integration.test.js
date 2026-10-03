@@ -19,7 +19,7 @@ class FakeAnthropic {
         }
         calls.summarize++;
         const title = prompt.match(/Judul: (.*)/)[1];
-        return { content: [{ type: 'text', text: JSON.stringify({ headline: `H ${title}`, penjelasan: 'Ini yang terjadi. Bayangin warung.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] }) }] };
+        return { content: [{ type: 'text', text: JSON.stringify({ headline: `H ${title}`, penjelasan: 'Ini yang terjadi. Aturannya berubah.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] }) }] };
       },
     };
   }

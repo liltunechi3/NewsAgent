@@ -41,11 +41,11 @@ test('scraper extracts same-site article links only', () => {
   assert.strictEqual(res[0].snippet, 'Intro text');
 });
 
-const GOOD = { headline: 'H', penjelasan: 'Ini yang terjadi. Bayangin warung kopi.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] };
+const GOOD = { headline: 'H', penjelasan: 'Ini yang terjadi. Aturannya berubah.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] };
 
 test('parseSummary tolerates code fences and returns exactly 3 takeaways', () => {
   const ok = parseSummary('```json\n' + JSON.stringify({ ...GOOD, takeaways: ['a', 'b', 'c', 'd', 'e', 'f'] }) + '\n```');
-  assert.deepStrictEqual(ok, { headline: 'H', explanation: 'Ini yang terjadi. Bayangin warung kopi.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] });
+  assert.deepStrictEqual(ok, { headline: 'H', explanation: 'Ini yang terjadi. Aturannya berubah.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] });
 });
 
 test('parseSummary rejects bad output', () => {
@@ -76,11 +76,11 @@ test('curate caps per source, total, and drops stale articles', () => {
 });
 
 test('formatDigest shows the release date in the title, explanation, insight and 3 numbered takeaways', () => {
-  const row = { headline: 'H', published_at: '2026-10-02T03:00:00Z', explanation: 'Ini yang terjadi. Bayangin warung.', insight: 'Lakukan X.', takeaways: JSON.stringify(['a', 'b', 'c']), source: 'S', link: 'https://x.com' };
+  const row = { headline: 'H', published_at: '2026-10-02T03:00:00Z', explanation: 'Ini yang terjadi. Aturannya berubah.', insight: 'Lakukan X.', takeaways: JSON.stringify(['a', 'b', 'c']), source: 'S', link: 'https://x.com' };
   const msg = formatDigest([row]);
   assert.match(msg, /DAILY DIGITAL MARKETING DIGEST/);
   assert.match(msg, /\*1\. H - 2 Okt 2026\*/);
-  assert.match(msg, /📖 Ini yang terjadi\. Bayangin warung\./);
+  assert.match(msg, /📖 Ini yang terjadi\. Aturannya berubah\./);
   assert.match(msg, /💡 \*Insight:\* Lakukan X\./);
   assert.match(msg, /📌 \*3 Takeaways:\*/);
   assert.strictEqual((msg.match(/^\d\. [a-c]$/gm) || []).length, 3);
