@@ -37,15 +37,24 @@ function parseTakeaways(raw) {
   }
 }
 
+/** "3 Okt 2026" in Jakarta time, or '' when the article has no (valid) release date. */
+function releaseDate(iso) {
+  const t = Date.parse(iso || '');
+  if (Number.isNaN(t)) return '';
+  return new Intl.DateTimeFormat('id-ID', { timeZone: config.timezone, day: 'numeric', month: 'short', year: 'numeric' }).format(t);
+}
+
 function formatArticle(a, n) {
-  const lines = [`*${n}. ${a.headline}*`];
-  if (a.anecdote) lines.push(`📖 ${a.anecdote}`);
+  const date = releaseDate(a.published_at);
+  const lines = [`*${n}. ${a.headline}${date ? ` - ${date}` : ''}*`];
+  const explanation = a.explanation || a.anecdote; // `anecdote` is the legacy field
+  if (explanation) lines.push(`📖 ${explanation}`);
   lines.push(`💡 *Insight:* ${a.insight}`);
   const takeaways = parseTakeaways(a.takeaways);
   if (takeaways.length) {
-    lines.push('📌 *5 Takeaways:*', ...takeaways.map((t, i) => `${i + 1}. ${t}`));
+    lines.push(`📌 *${takeaways.length} Takeaways:*`, ...takeaways.map((t, i) => `${i + 1}. ${t}`));
   }
-  lines.push(`🗞️ Sumber: ${a.source}`, `🔗 ${a.link}`);
+  lines.push(`🔗 ${a.source}: ${a.link}`);
   return lines.join('\n');
 }
 
@@ -54,21 +63,22 @@ function formatDigest(articles, date = new Date()) {
   return [header, ...articles.map((a, i) => formatArticle(a, i + 1))].join('\n\n');
 }
 
-/** Splits a message into chunks below `limit`, breaking only between articles. */
-function chunkMessage(text, limit = 3500) {
+/**
+ * Splits a digest into WhatsApp bubbles: one if it fits in `singleLimit` characters,
+ * otherwise exactly two, cut between articles at the point that balances their sizes.
+ * Never returns more than two, so a long digest stays long rather than turning into a stream of messages.
+ */
+function chunkMessage(text, singleLimit = 5000) {
   const parts = text.split('\n\n');
-  const chunks = [];
-  let cur = '';
-  for (const p of parts) {
-    if (cur && (cur + '\n\n' + p).length > limit) {
-      chunks.push(cur);
-      cur = p;
-    } else {
-      cur = cur ? cur + '\n\n' + p : p;
-    }
+  if (text.length <= singleLimit || parts.length < 2) return [text];
+  let best = null;
+  for (let i = 1; i < parts.length; i++) {
+    const first = parts.slice(0, i).join('\n\n');
+    const second = parts.slice(i).join('\n\n');
+    const worst = Math.max(first.length, second.length);
+    if (!best || worst < best.worst) best = { worst, chunks: [first, second] };
   }
-  if (cur) chunks.push(cur);
-  return chunks;
+  return best.chunks;
 }
 
-module.exports = { curate, filterFresh, formatDigest, formatArticle, chunkMessage, jakartaDate, jakartaIsoDate };
+module.exports = { curate, filterFresh, releaseDate, formatDigest, formatArticle, chunkMessage, jakartaDate, jakartaIsoDate };

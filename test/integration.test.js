@@ -19,7 +19,7 @@ class FakeAnthropic {
         }
         calls.summarize++;
         const title = prompt.match(/Judul: (.*)/)[1];
-        return { content: [{ type: 'text', text: JSON.stringify({ headline: `H ${title}`, cerita: 'Bayangin warung.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c', 'd', 'e'] }) }] };
+        return { content: [{ type: 'text', text: JSON.stringify({ headline: `H ${title}`, penjelasan: 'Ini yang terjadi. Aturannya berubah.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] }) }] };
       },
     };
   }
@@ -50,8 +50,9 @@ test('runDigest ranks, summarizes only the top 5, and marks them sent', async ()
   assert.strictEqual(calls.rank, 1);
   assert.strictEqual(calls.summarize, 5);            // only the 5 chosen articles were summarized
   const digest = out.join('\n');
-  assert.match(digest, /\*1\. H Article 1\*/);       // odd ids ranked first
-  assert.match(digest, /5 Takeaways/);
+  assert.match(digest, /\*1\. H Article 1 - /);     // odd ids ranked first
+  assert.match(digest, /3 Takeaways/);
+  assert.match(digest, /\*1\. H Article 1 - \d{1,2} \S+ \d{4}\*/); // release date in the title
   assert.strictEqual((digest.match(/^\*\d\. /gm) || []).length, 5);
 
   // A second run sends the next 5 (ids not yet sent), never repeating the first batch.

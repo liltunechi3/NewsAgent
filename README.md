@@ -16,7 +16,7 @@ npm start                # real run
 
 ## Summaries (Claude)
 
-Each article is rewritten in casual, easy-to-follow Bahasa Indonesia: a headline, a short anecdote/analogy (marked as an illustration, no invented facts), an actionable insight, and exactly 5 takeaways. Edit the `SYSTEM` prompt in `src/summarizer.js` to change tone or structure. A digest has 5 articles (change with `DIGEST_MAX`); ranking prompt lives in `src/ranker.js` and favors SEO, ads, social, content, email/CRM, analytics and AI-for-marketing, and down-ranks event promos, job posts and thin vendor announcements. If a chosen article fails to summarize, the next-ranked one takes its place. Cost is roughly $0.025 per digest (about 200 digests per $5 on Haiku).
+Each article is rewritten in easy-to-follow Bahasa Indonesia: a headline with the release date (`Title - 3 Okt 2026`; omitted when the source gives no date), a 3-4 sentence explanation in casual, plain language (no anecdotes or analogies), a 1-2 sentence actionable insight, and exactly 3 short takeaways. Edit the `SYSTEM` prompt in `src/summarizer.js` to change tone or structure. The digest is sent as one WhatsApp bubble when it fits in ~5,000 characters, otherwise as at most two (cut between articles); see `chunkMessage` in `src/formatter.js`.
 
 Summaries use Claude via the Anthropic API. The default model is `claude-haiku-4-5` (cheapest; roughly $1/month at ~16 articles/day). Override it with `ANTHROPIC_MODEL`. Larger models cost more and think before answering, which can need a higher `max_tokens` in `src/summarizer.js`.
 
@@ -29,6 +29,8 @@ Summaries use Claude via the Anthropic API. The default model is `claude-haiku-4
 | `console` | Anywhere | Prints the digest. Useful for testing. |
 
 `WHATSAPP_PHONE` is digits only, international format (e.g. `62812345678`).
+
+**Sending to a group instead:** set `WHATSAPP_GROUP_ID` to the group's id (looks like `1234567890-1234567890@g.us`). It takes priority over `WHATSAPP_PHONE`. The WhatsApp number linked to the sender device must be a member of the group. Note that if the sender is your own personal number, messages in the group appear as sent by you and won't trigger a notification, so a second number as sender (with your personal number in the group) works best.
 
 ## Scheduling
 
