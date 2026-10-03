@@ -2,7 +2,7 @@
 
 Daily digital marketing news digest, in Bahasa Indonesia, delivered to WhatsApp at 10:00 Jakarta time.
 
-**Pipeline:** fetch (11 RSS feeds + 2 scraped sites) → dedupe in SQLite → Claude picks the 5 most relevant to digital marketing (one cheap call over up to 20 candidates) → only those 5 are summarized → send via WhatsApp.
+**Pipeline:** fetch (11 RSS feeds + 2 scraped sites) → dedupe in SQLite → Claude picks the 5 most relevant to digital marketing (one cheap call over up to 30 candidates) → only those 5 are summarized → send via WhatsApp.
 
 ## Quick start
 
