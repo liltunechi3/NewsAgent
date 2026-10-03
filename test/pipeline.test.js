@@ -47,27 +47,7 @@ test('parseSummary tolerates code fences and rejects bad output', () => {
 
 test('summarizeArticle uses the Claude client response', async () => {
   const fake = { messages: { create: async () => ({ content: [{ type: 'text', text: '{"headline":"H","insight":"I","action":"A"}' }] }) } };
-  assert.strictEqual((await summarizeArticle(art(1), { provider: 'claude', anthropic: fake })).headline, 'H');
-});
-
-test('summarizeArticle uses the Gemini response', async () => {
-  const calls = [];
-  const http = { post: async (url, body, opts) => {
-    calls.push({ url, body, opts });
-    return { data: { candidates: [{ content: { parts: [{ text: '{"headline":"G","insight":"I","action":"A"}' }] } }] } };
-  } };
-  const config = require('../src/config');
-  config.geminiApiKey = 'test-key';
-  const res = await summarizeArticle(art(1), { provider: 'gemini', http });
-  assert.strictEqual(res.headline, 'G');
-  assert.match(calls[0].url, /:generateContent$/);
-  assert.strictEqual(calls[0].opts.headers['x-goog-api-key'], 'test-key');
-  assert.strictEqual(calls[0].body.generationConfig.responseMimeType, 'application/json');
-});
-
-test('Gemini errors surface a clear message', async () => {
-  const http = { post: async () => ({ data: { promptFeedback: { blockReason: 'SAFETY' } } }) };
-  await assert.rejects(summarizeArticle(art(1), { provider: 'gemini', http }), /SAFETY/);
+  assert.strictEqual((await summarizeArticle(art(1), { anthropic: fake })).headline, 'H');
 });
 
 test('curate caps per source, total, and drops stale articles', () => {
@@ -92,9 +72,4 @@ test('formatDigest and chunkMessage', () => {
 test('sendDigest validates the phone number', async () => {
   await assert.rejects(sendDigest('hi', { provider: 'fonnte', phone: '+62 812' }), /international format/);
   await assert.rejects(sendDigest('hi', { provider: 'fonnte' }), /WHATSAPP_PHONE/);
-});
-
-test('Gemini HTTP errors include the API error message', async () => {
-  const http = { post: async () => { throw Object.assign(new Error('Request failed with status code 400'), { response: { status: 400, data: { error: { message: 'API key not valid' } } } }); } };
-  await assert.rejects(summarizeArticle(art(1), { provider: 'gemini', http }), /Gemini 400: API key not valid/);
 });
