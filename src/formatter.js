@@ -37,13 +37,22 @@ function parseTakeaways(raw) {
   }
 }
 
+/** "3 Okt 2026" in Jakarta time, or '' when the article has no (valid) release date. */
+function releaseDate(iso) {
+  const t = Date.parse(iso || '');
+  if (Number.isNaN(t)) return '';
+  return new Intl.DateTimeFormat('id-ID', { timeZone: config.timezone, day: 'numeric', month: 'short', year: 'numeric' }).format(t);
+}
+
 function formatArticle(a, n) {
-  const lines = [`*${n}. ${a.headline}*`];
-  if (a.anecdote) lines.push(`📖 ${a.anecdote}`);
+  const date = releaseDate(a.published_at);
+  const lines = [`*${n}. ${a.headline}${date ? ` - ${date}` : ''}*`];
+  const explanation = a.explanation || a.anecdote; // `anecdote` is the legacy field
+  if (explanation) lines.push(`📖 ${explanation}`);
   lines.push(`💡 *Insight:* ${a.insight}`);
   const takeaways = parseTakeaways(a.takeaways);
   if (takeaways.length) {
-    lines.push('📌 *5 Takeaways:*', ...takeaways.map((t, i) => `${i + 1}. ${t}`));
+    lines.push(`📌 *${takeaways.length} Takeaways:*`, ...takeaways.map((t, i) => `${i + 1}. ${t}`));
   }
   lines.push(`🔗 ${a.source}: ${a.link}`);
   return lines.join('\n');
@@ -72,4 +81,4 @@ function chunkMessage(text, singleLimit = 5000) {
   return best.chunks;
 }
 
-module.exports = { curate, filterFresh, formatDigest, formatArticle, chunkMessage, jakartaDate, jakartaIsoDate };
+module.exports = { curate, filterFresh, releaseDate, formatDigest, formatArticle, chunkMessage, jakartaDate, jakartaIsoDate };

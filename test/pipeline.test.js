@@ -20,11 +20,11 @@ test('database summary/sent lifecycle', () => {
   const store = db.open(':memory:');
   store.saveArticles([art(1)]);
   const [a] = store.getUnsummarized(10);
-  store.saveSummary(a.id, { headline: 'h', anecdote: 'c', insight: 'i', takeaways: ['1', '2', '3', '4', '5'] });
+  store.saveSummary(a.id, { headline: 'h', explanation: 'c', insight: 'i', takeaways: ['1', '2', '3'] });
   assert.strictEqual(store.getUnsummarized(10).length, 0);
   const [row] = store.getUnsentSummarized();
-  assert.strictEqual(row.anecdote, 'c');
-  assert.deepStrictEqual(JSON.parse(row.takeaways), ['1', '2', '3', '4', '5']);
+  assert.strictEqual(row.explanation, 'c');
+  assert.deepStrictEqual(JSON.parse(row.takeaways), ['1', '2', '3']);
   store.markSent([a.id], '2026-10-03');
   assert.strictEqual(store.getUnsentSummarized().length, 0);
   store.close();
@@ -41,18 +41,19 @@ test('scraper extracts same-site article links only', () => {
   assert.strictEqual(res[0].snippet, 'Intro text');
 });
 
-const GOOD = { headline: 'H', cerita: 'Bayangin warung kopi.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c', 'd', 'e'] };
+const GOOD = { headline: 'H', penjelasan: 'Ini yang terjadi. Bayangin warung kopi.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] };
 
-test('parseSummary tolerates code fences and returns 5 takeaways', () => {
+test('parseSummary tolerates code fences and returns exactly 3 takeaways', () => {
   const ok = parseSummary('```json\n' + JSON.stringify({ ...GOOD, takeaways: ['a', 'b', 'c', 'd', 'e', 'f'] }) + '\n```');
-  assert.deepStrictEqual(ok, { headline: 'H', anecdote: 'Bayangin warung kopi.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c', 'd', 'e'] });
+  assert.deepStrictEqual(ok, { headline: 'H', explanation: 'Ini yang terjadi. Bayangin warung kopi.', insight: 'Lakukan X.', takeaways: ['a', 'b', 'c'] });
 });
 
 test('parseSummary rejects bad output', () => {
   assert.throws(() => parseSummary('no json'));
   assert.throws(() => parseSummary('{"headline":"H"}'), /missing field/);
-  assert.throws(() => parseSummary(JSON.stringify({ ...GOOD, takeaways: ['a', 'b', 'c'] })), /need 5 takeaways/);
-  assert.throws(() => parseSummary(JSON.stringify({ ...GOOD, takeaways: 'nope' })), /need 5 takeaways/);
+  assert.throws(() => parseSummary(JSON.stringify({ ...GOOD, takeaways: ['a', 'b'] })), /need 3 takeaways/);
+  assert.throws(() => parseSummary(JSON.stringify({ ...GOOD, takeaways: 'nope' })), /need 3 takeaways/);
+  assert.throws(() => parseSummary(JSON.stringify({ headline: 'H', cerita: 'x', insight: 'i', takeaways: ['a', 'b', 'c'] })), /missing field: penjelasan/);
 });
 
 test('summarizeArticle uses the Claude client response', async () => {
@@ -74,20 +75,30 @@ test('curate caps per source, total, and drops stale articles', () => {
   assert.deepStrictEqual(picked.map((a) => a.link.slice(-1)), ['1', '2', '4']);
 });
 
-test('formatDigest shows anecdote, insight and 5 numbered takeaways', () => {
-  const row = { headline: 'H', anecdote: 'Bayangin warung.', insight: 'Lakukan X.', takeaways: JSON.stringify(['a', 'b', 'c', 'd', 'e']), source: 'S', link: 'https://x.com' };
+test('formatDigest shows the release date in the title, explanation, insight and 3 numbered takeaways', () => {
+  const row = { headline: 'H', published_at: '2026-10-02T03:00:00Z', explanation: 'Ini yang terjadi. Bayangin warung.', insight: 'Lakukan X.', takeaways: JSON.stringify(['a', 'b', 'c']), source: 'S', link: 'https://x.com' };
   const msg = formatDigest([row]);
   assert.match(msg, /DAILY DIGITAL MARKETING DIGEST/);
-  assert.match(msg, /\*1\. H\*/);
-  assert.match(msg, /📖 Bayangin warung\./);
+  assert.match(msg, /\*1\. H - 2 Okt 2026\*/);
+  assert.match(msg, /📖 Ini yang terjadi\. Bayangin warung\./);
   assert.match(msg, /💡 \*Insight:\* Lakukan X\./);
-  assert.strictEqual((msg.match(/^\d\. [a-e]$/gm) || []).length, 5);
+  assert.match(msg, /📌 \*3 Takeaways:\*/);
+  assert.strictEqual((msg.match(/^\d\. [a-c]$/gm) || []).length, 3);
 });
 
-test('formatDigest tolerates rows summarized in the old format', () => {
-  const msg = formatDigest([{ headline: 'H', insight: 'I', action: 'A', source: 'S', link: 'https://x.com' }]);
-  assert.match(msg, /\*1\. H\*/);
-  assert.doesNotMatch(msg, /Takeaways/);
+test('formatDigest omits the date when unknown and tolerates older formats', () => {
+  const noDate = formatDigest([{ headline: 'H', explanation: 'e', insight: 'I', takeaways: ['a', 'b', 'c'], source: 'S', link: 'https://x.com' }]);
+  assert.match(noDate, /\*1\. H\*/);
+  const legacy = formatDigest([{ headline: 'H', anecdote: 'cerita lama', insight: 'I', action: 'A', source: 'S', link: 'https://x.com' }]);
+  assert.match(legacy, /📖 cerita lama/);
+  assert.doesNotMatch(legacy, /Takeaways/);
+});
+
+test('rows summarized in the previous format (no explanation) are redone', async () => {
+  const anthropic = claudeSays(JSON.stringify(GOOD));
+  const prev = { ...rows(1)[0], summarized: 1, anecdote: 'lama', takeaways: JSON.stringify(['1', '2', '3', '4', '5']) };
+  const [picked] = await summarizeUntil([prev], 1, () => {}, { anthropic });
+  assert.strictEqual(picked.explanation, GOOD.penjelasan);
 });
 
 test('chunkMessage keeps one bubble when it fits and never exceeds two', () => {
@@ -121,8 +132,8 @@ test('database migrates a pre-existing old-schema table', () => {
   const store = db.open(file);
   store.saveArticles([art(1)]);
   const [a] = store.getUnsummarized(5);
-  store.saveSummary(a.id, { headline: 'h', anecdote: 'c', insight: 'i', takeaways: ['1', '2', '3', '4', '5'] });
-  assert.strictEqual(store.getUnsentSummarized()[0].anecdote, 'c');
+  store.saveSummary(a.id, { headline: 'h', explanation: 'c', insight: 'i', takeaways: ['1', '2', '3'] });
+  assert.strictEqual(store.getUnsentSummarized()[0].explanation, 'c');
   store.close();
 });
 
@@ -161,7 +172,7 @@ test('summarizeUntil stops at the target, skips failures and reuses new-format r
   const base = rows(5);
   const input = [
     base[0],                                   // fails, skipped
-    { ...base[1], summarized: 1, takeaways: JSON.stringify(['a', 'b', 'c', 'd', 'e']), headline: 'old' }, // reused
+    { ...base[1], summarized: 1, explanation: 'x', takeaways: JSON.stringify(['a', 'b', 'c']), headline: 'old' }, // reused
     base[2],                                   // summarized
     base[3],                                   // summarized -> target reached
     base[4],                                   // never touched
@@ -177,7 +188,7 @@ test('summarizeUntil redoes rows summarized in the old format', async () => {
   const anthropic = claudeSays(JSON.stringify(GOOD));
   const old = { ...rows(1)[0], summarized: 1, takeaways: null, insight: 'i', action: 'a' };
   const [picked] = await summarizeUntil([old], 1, () => {}, { anthropic });
-  assert.strictEqual(picked.anecdote, GOOD.cerita);
+  assert.strictEqual(picked.explanation, GOOD.penjelasan);
 });
 
 test('getUnsent returns newest unsent articles whether or not summarized', () => {
@@ -185,7 +196,7 @@ test('getUnsent returns newest unsent articles whether or not summarized', () =>
   store.saveArticles([art(1, 'S', { publishedAt: '2026-10-01T00:00:00Z' }), art(2, 'S', { publishedAt: '2026-10-02T00:00:00Z' })]);
   const [first] = store.getUnsent(10);
   assert.strictEqual(first.link, 'https://x.com/p/2');
-  store.saveSummary(first.id, { headline: 'h', anecdote: 'c', insight: 'i', takeaways: ['1', '2', '3', '4', '5'] });
+  store.saveSummary(first.id, { headline: 'h', explanation: 'c', insight: 'i', takeaways: ['1', '2', '3'] });
   assert.strictEqual(store.getUnsent(10).length, 2);
   store.markSent([first.id], '2026-10-03');
   assert.strictEqual(store.getUnsent(10).length, 1);
