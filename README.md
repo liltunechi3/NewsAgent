@@ -14,9 +14,9 @@ npm run dry-run          # runs the whole pipeline, prints the digest, sends not
 npm start                # real run
 ```
 
-## AI provider (`AI_PROVIDER`)
+## Summaries (Claude)
 
-Summaries can come from **Gemini** (has a free tier; get a key at aistudio.google.com) or **Claude**. If `AI_PROVIDER` is not set, Gemini is used when `GEMINI_API_KEY` is set, otherwise Claude. Models are configurable with `GEMINI_MODEL` (default `gemini-2.5-flash`) and `ANTHROPIC_MODEL`. Note: on Gemini's free tier, Google may use inputs to improve its models, and rate limits apply; articles that hit a limit are skipped and logged.
+Summaries use Claude via the Anthropic API. The default model is `claude-haiku-4-5` (cheapest; roughly $1/month at ~16 articles/day). Override it with `ANTHROPIC_MODEL`. Larger models cost more and think before answering, which can need a higher `max_tokens` in `src/summarizer.js`.
 
 ## WhatsApp providers (`WHATSAPP_PROVIDER`)
 
@@ -51,7 +51,7 @@ src/index.js            pipeline orchestrator (runDigest)
 src/config.js           sources and settings
 src/database.js         SQLite store + dedup
 src/sources/            rss-fetcher.js, web-scraper.js
-src/summarizer.js       AI summaries
+src/summarizer.js       Claude summaries
 src/formatter.js        curation + WhatsApp formatting
 src/whatsapp-sender.js  fonnte / wwebjs / console delivery
 api/digest.js           Vercel cron endpoint
