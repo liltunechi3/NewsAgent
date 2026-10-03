@@ -17,6 +17,8 @@ module.exports = {
   rankBackups: 3,
   whatsapp: {
     phone: process.env.WHATSAPP_PHONE,
+    // Optional: send to a WhatsApp group instead of a personal chat, e.g. 1234567890-1234567890@g.us
+    group: process.env.WHATSAPP_GROUP_ID,
     provider: process.env.WHATSAPP_PROVIDER || 'console',
     fonnteToken: process.env.FONNTE_TOKEN,
   },

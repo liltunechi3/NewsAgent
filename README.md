@@ -30,6 +30,8 @@ Summaries use Claude via the Anthropic API. The default model is `claude-haiku-4
 
 `WHATSAPP_PHONE` is digits only, international format (e.g. `62812345678`).
 
+**Sending to a group instead:** set `WHATSAPP_GROUP_ID` to the group's id (looks like `1234567890-1234567890@g.us`). It takes priority over `WHATSAPP_PHONE`. The WhatsApp number linked to the sender device must be a member of the group. Note that if the sender is your own personal number, messages in the group appear as sent by you and won't trigger a notification, so a second number as sender (with your personal number in the group) works best.
+
 ## Scheduling
 
 - **Vercel:** `vercel.json` registers a cron at `0 3 * * *` UTC (= 10:00 Jakarta) calling `/api/digest`. Set `ANTHROPIC_API_KEY`, `WHATSAPP_PHONE`, `WHATSAPP_PROVIDER=fonnte`, `FONNTE_TOKEN` and `CRON_SECRET` in the project's environment variables; Vercel sends `CRON_SECRET` as a bearer token and the endpoint rejects anything else.

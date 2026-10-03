@@ -175,3 +175,32 @@ test('getUnsent returns newest unsent articles whether or not summarized', () =>
   assert.strictEqual(store.getUnsent(10).length, 1);
   store.close();
 });
+
+test('sendDigest sends to a group id without a country code, and prefers it over the phone', async () => {
+  const axios = require('axios');
+  const original = axios.post;
+  const sent = [];
+  axios.post = async (url, body) => { sent.push({ url, body: Object.fromEntries(body) }); return { data: { status: true } }; };
+  try {
+    await sendDigest('halo', { provider: 'fonnte', fonnteToken: 't', phone: '628123456789', group: '120363012345678901@g.us' });
+    await sendDigest('halo', { provider: 'fonnte', fonnteToken: 't', phone: '628123456789' });
+  } finally {
+    axios.post = original;
+  }
+  assert.strictEqual(sent[0].body.target, '120363012345678901@g.us');
+  assert.strictEqual(sent[0].body.countryCode, undefined);
+  assert.strictEqual(sent[1].body.target, '628123456789');
+  assert.strictEqual(sent[1].body.countryCode, '62');
+});
+
+test('sendDigest rejects a malformed group id and works with only a group configured', async () => {
+  await assert.rejects(sendDigest('hi', { provider: 'fonnte', fonnteToken: 't', group: 'Grup Digest' }), /WHATSAPP_GROUP_ID must look like/);
+  const axios = require('axios');
+  const original = axios.post;
+  axios.post = async () => ({ data: { status: true } });
+  try {
+    await sendDigest('hi', { provider: 'fonnte', fonnteToken: 't', group: '1234-5678@g.us' }); // no phone needed
+  } finally {
+    axios.post = original;
+  }
+});
