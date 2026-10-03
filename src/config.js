@@ -21,6 +21,8 @@ module.exports = {
     group: process.env.WHATSAPP_GROUP_ID,
     provider: process.env.WHATSAPP_PROVIDER || 'console',
     fonnteToken: process.env.FONNTE_TOKEN,
+    // Pause between bubbles when a digest is split in two
+    bubbleDelayMs: Number(process.env.WHATSAPP_BUBBLE_DELAY_MS || 3000),
   },
 
   rssSources: [

@@ -46,7 +46,7 @@ Vercel's filesystem is ephemeral, so on Vercel the SQLite file lives in `/tmp` a
 
 Sources live in `src/config.js`. Scraped sites use a generic link extractor (`selector` per site); if a site's layout changes or picks up the wrong links, adjust its `selector`. The scraper URLs were written from the project docs and have not been verified against the live sites.
 
-Optional env vars: `ANTHROPIC_MODEL`, `DB_PATH`, `DIGEST_MIN`, `DIGEST_MAX`, `MAX_AGE_HOURS`, `DRY_RUN=1`.
+Optional env vars: `ANTHROPIC_MODEL`, `DB_PATH`, `DIGEST_MAX`, `MAX_AGE_HOURS`, `WHATSAPP_BUBBLE_DELAY_MS`, `DRY_RUN=1`.
 
 ## Layout
 
