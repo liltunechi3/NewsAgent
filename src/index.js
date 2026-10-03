@@ -32,6 +32,7 @@ async function runDigest({ dryRun = process.env.DRY_RUN === '1' } = {}) {
     if (picked.length < config.digestMin) console.warn(`[digest] only ${picked.length} articles (target ${config.digestMax})`);
 
     const message = formatDigest(picked);
+    console.log(`[digest] message is ${message.length} characters`);
     if (dryRun) {
       console.log('[digest] dry run, not sending:\n\n' + message);
       return { sent: 0, dryRun: true, count: picked.length };

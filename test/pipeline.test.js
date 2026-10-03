@@ -231,3 +231,24 @@ test('sendDigest rejects a malformed group id and works with only a group config
     axios.post = original;
   }
 });
+
+test('sendDigest logs each bubble verdict and pauses between two bubbles', async () => {
+  const axios = require('axios');
+  const original = axios.post;
+  const stamps = [];
+  axios.post = async () => { stamps.push(Date.now()); return { data: { status: true, process: 'pending', id: ['1'], target: ['628123456789'] } }; };
+  const logs = [];
+  const origLog = console.log;
+  console.log = (...a) => logs.push(a.join(' '));
+  try {
+    const long = ['HEADER', ...[1, 2, 3, 4, 5].map((n) => `*${n}. J*\n${'x'.repeat(1300)}`)].join('\n\n'); // > 5000 chars -> 2 bubbles
+    await sendDigest(long, { provider: 'fonnte', fonnteToken: 't', phone: '628123456789', bubbleDelayMs: 60 });
+  } finally {
+    console.log = origLog;
+    axios.post = original;
+  }
+  assert.strictEqual(stamps.length, 2);
+  assert.ok(stamps[1] - stamps[0] >= 50);
+  assert.strictEqual(logs.filter((l) => l.startsWith('[whatsapp] bubble')).length, 2);
+  assert.ok(logs.every((l) => !l.includes('628123456789')));   // phone number never logged
+});

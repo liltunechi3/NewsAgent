@@ -15,9 +15,13 @@ function resolveTarget(wa) {
   return { target: wa.phone, isGroup: false };
 }
 
-async function sendFonnte(text, { target, isGroup }, { fonnteToken }) {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function sendFonnte(text, { target, isGroup }, { fonnteToken, bubbleDelayMs = 3000 }) {
   if (!fonnteToken) throw new Error('FONNTE_TOKEN is not set');
-  for (const chunk of chunkMessage(text)) {
+  const chunks = chunkMessage(text);
+  for (const [i, chunk] of chunks.entries()) {
+    if (i > 0) await sleep(bubbleDelayMs); // back-to-back messages can be queued or dropped by the gateway
     const fields = { target, message: chunk };
     if (!isGroup) fields.countryCode = '62';
     const body = new URLSearchParams(fields);
@@ -25,6 +29,9 @@ async function sendFonnte(text, { target, isGroup }, { fonnteToken }) {
       headers: { Authorization: fonnteToken },
       timeout: 20000,
     });
+    // Log the gateway's verdict per bubble (no message text, no phone number) so lost bubbles are traceable.
+    const verdict = data ? { status: data.status, process: data.process, id: data.id, detail: data.detail } : data;
+    console.log(`[whatsapp] bubble ${i + 1}/${chunks.length} (${chunk.length} chars) -> ${JSON.stringify(verdict)}`);
     if (data && data.status === false) throw new Error(`Fonnte error: ${data.reason || JSON.stringify(data)}`);
   }
 }
