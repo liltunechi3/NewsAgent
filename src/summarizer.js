@@ -53,18 +53,28 @@ async function summarizeArticle(article, { anthropic } = {}) {
   return parseSummary(await viaClaude(article, anthropic));
 }
 
-/** Summarizes sequentially; a failure on one article is logged and skipped. */
-async function summarizeAll(articles, onSummary, opts) {
-  let ok = 0;
-  for (const a of articles) {
+/**
+ * Walks `rows` in order and collects up to `target` summarized articles.
+ * Rows already summarized (new format) are reused; others are summarized now (a failure is logged and skipped).
+ */
+async function summarizeUntil(rows, target, onSummary, opts) {
+  const picked = [];
+  for (const row of rows) {
+    if (picked.length >= target) break;
+    // Rows summarized in an older format have no takeaways and are redone for consistency.
+    if (row.summarized && row.takeaways) {
+      picked.push(row);
+      continue;
+    }
     try {
-      onSummary(a, await summarizeArticle(a, opts));
-      ok++;
+      const summary = await summarizeArticle(row, opts);
+      onSummary(row, summary);
+      picked.push({ ...row, ...summary, summarized: 1 });
     } catch (err) {
-      console.warn(`[summarizer] "${a.title.slice(0, 50)}" failed: ${err.message}`);
+      console.warn(`[summarizer] "${row.title.slice(0, 50)}" failed: ${err.message}`);
     }
   }
-  return ok;
+  return picked;
 }
 
-module.exports = { summarizeArticle, summarizeAll, parseSummary };
+module.exports = { summarizeArticle, summarizeUntil, parseSummary };

@@ -7,13 +7,18 @@ const jakartaDate = (d = new Date()) =>
 const jakartaIsoDate = (d = new Date()) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: config.timezone }).format(d);
 
-/** Picks the digest articles: freshest first, at most `maxPerSource` per source. */
+const isFresh = (a, maxAgeHours, now) => !a.published_at || Date.parse(a.published_at) >= now - maxAgeHours * 3600 * 1000;
+
+/** Drops articles older than `maxAgeHours` (undated articles are kept). */
+function filterFresh(articles, { maxAgeHours = config.maxAgeHours, now = Date.now() } = {}) {
+  return articles.filter((a) => isFresh(a, maxAgeHours, now));
+}
+
+/** Keeps the given order, drops stale articles, and allows at most `maxPerSource` per source. */
 function curate(articles, { max = config.digestMax, maxPerSource = config.maxPerSource, maxAgeHours = config.maxAgeHours, now = Date.now() } = {}) {
-  const cutoff = now - maxAgeHours * 3600 * 1000;
-  const fresh = articles.filter((a) => !a.published_at || Date.parse(a.published_at) >= cutoff);
   const perSource = {};
   const picked = [];
-  for (const a of fresh) {
+  for (const a of filterFresh(articles, { maxAgeHours, now })) {
     if (picked.length >= max) break;
     if ((perSource[a.source] || 0) >= maxPerSource) continue;
     perSource[a.source] = (perSource[a.source] || 0) + 1;
@@ -66,4 +71,4 @@ function chunkMessage(text, limit = 3500) {
   return chunks;
 }
 
-module.exports = { curate, formatDigest, formatArticle, chunkMessage, jakartaDate, jakartaIsoDate };
+module.exports = { curate, filterFresh, formatDigest, formatArticle, chunkMessage, jakartaDate, jakartaIsoDate };

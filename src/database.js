@@ -77,6 +77,10 @@ function open(dbPath) {
       })(articles);
       return added;
     },
+    /** Newest unsent articles, summarized or not: the pool the ranker picks from. */
+    getUnsent(limit) {
+      return db.prepare('SELECT * FROM articles WHERE sent = 0 ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?').all(limit);
+    },
     getUnsummarized(limit) {
       return db.prepare('SELECT * FROM articles WHERE summarized = 0 AND sent = 0 ORDER BY id DESC LIMIT ?').all(limit);
     },

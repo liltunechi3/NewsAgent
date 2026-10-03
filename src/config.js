@@ -8,11 +8,13 @@ module.exports = {
   // Vercel's filesystem is read-only except /tmp, and /tmp does not persist between invocations.
   dbPath: process.env.DB_PATH || (onVercel ? '/tmp/articles.db' : './data/articles.db'),
   digestMin: Number(process.env.DIGEST_MIN || 5),
-  digestMax: Number(process.env.DIGEST_MAX || 8),
+  digestMax: Number(process.env.DIGEST_MAX || 5),
   maxPerSource: 2,
   // Ignore articles older than this when building a digest
   maxAgeHours: Number(process.env.MAX_AGE_HOURS || 48),
-  maxCandidates: 16,
+  // Articles the ranker chooses from, and extra ranked articles kept as backups if a summary fails
+  maxCandidates: 20,
+  rankBackups: 3,
   whatsapp: {
     phone: process.env.WHATSAPP_PHONE,
     provider: process.env.WHATSAPP_PROVIDER || 'console',

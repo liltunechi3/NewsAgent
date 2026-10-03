@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const db = require('../src/database');
 const { extractArticles } = require('../src/sources/web-scraper');
-const { parseSummary, summarizeArticle } = require('../src/summarizer');
+const { parseSummary, summarizeArticle, summarizeUntil } = require('../src/summarizer');
+const { rankArticles, parseRanking } = require('../src/ranker');
 const { curate, formatDigest, chunkMessage } = require('../src/formatter');
 const { sendDigest } = require('../src/whatsapp-sender');
 
@@ -112,4 +113,65 @@ test('database migrates a pre-existing old-schema table', () => {
 test('sendDigest validates the phone number', async () => {
   await assert.rejects(sendDigest('hi', { provider: 'fonnte', phone: '+62 812' }), /international format/);
   await assert.rejects(sendDigest('hi', { provider: 'fonnte' }), /WHATSAPP_PHONE/);
+});
+
+const claudeSays = (text) => ({ messages: { create: async () => ({ content: [{ type: 'text', text }] }) } });
+const rows = (n) => Array.from({ length: n }, (_, i) => ({ id: i + 1, title: `Title ${i + 1}`, link: `https://x.com/p/${i + 1}`, source: 'S', snippet: 's' }));
+
+test('parseRanking keeps known unique ids in the model order', () => {
+  assert.deepStrictEqual(parseRanking('```json\n{"ids":[3,1,3,99,2]}\n```', [1, 2, 3]), [3, 1, 2]);
+  assert.throws(() => parseRanking('{"ids":[99]}', [1]), /no valid ids/);
+  assert.throws(() => parseRanking('nope', [1]), /no JSON/);
+});
+
+test('rankArticles reorders by relevance and appends omitted candidates', async () => {
+  const ranked = await rankArticles(rows(4), { anthropic: claudeSays('{"ids":[3,1]}') });
+  assert.deepStrictEqual(ranked.map((a) => a.id), [3, 1, 2, 4]);
+});
+
+test('rankArticles falls back to the original order when the call fails', async () => {
+  const boom = { messages: { create: async () => { throw new Error('boom'); } } };
+  assert.deepStrictEqual((await rankArticles(rows(3), { anthropic: boom })).map((a) => a.id), [1, 2, 3]);
+});
+
+test('summarizeUntil stops at the target, skips failures and reuses new-format rows', async () => {
+  let calls = 0;
+  const anthropic = { messages: { create: async () => {
+    calls++;
+    if (calls === 1) throw new Error('bad');
+    return { content: [{ type: 'text', text: JSON.stringify(GOOD) }] };
+  } } };
+  const saved = [];
+  const base = rows(5);
+  const input = [
+    base[0],                                   // fails, skipped
+    { ...base[1], summarized: 1, takeaways: JSON.stringify(['a', 'b', 'c', 'd', 'e']), headline: 'old' }, // reused
+    base[2],                                   // summarized
+    base[3],                                   // summarized -> target reached
+    base[4],                                   // never touched
+  ];
+  const picked = await summarizeUntil(input, 3, (row) => saved.push(row.id), { anthropic });
+  assert.deepStrictEqual(picked.map((p) => p.id), [2, 3, 4]);
+  assert.deepStrictEqual(saved, [3, 4]);
+  assert.strictEqual(picked[0].headline, 'old');
+  assert.strictEqual(calls, 3);
+});
+
+test('summarizeUntil redoes rows summarized in the old format', async () => {
+  const anthropic = claudeSays(JSON.stringify(GOOD));
+  const old = { ...rows(1)[0], summarized: 1, takeaways: null, insight: 'i', action: 'a' };
+  const [picked] = await summarizeUntil([old], 1, () => {}, { anthropic });
+  assert.strictEqual(picked.anecdote, GOOD.cerita);
+});
+
+test('getUnsent returns newest unsent articles whether or not summarized', () => {
+  const store = db.open(':memory:');
+  store.saveArticles([art(1, 'S', { publishedAt: '2026-10-01T00:00:00Z' }), art(2, 'S', { publishedAt: '2026-10-02T00:00:00Z' })]);
+  const [first] = store.getUnsent(10);
+  assert.strictEqual(first.link, 'https://x.com/p/2');
+  store.saveSummary(first.id, { headline: 'h', anecdote: 'c', insight: 'i', takeaways: ['1', '2', '3', '4', '5'] });
+  assert.strictEqual(store.getUnsent(10).length, 2);
+  store.markSent([first.id], '2026-10-03');
+  assert.strictEqual(store.getUnsent(10).length, 1);
+  store.close();
 });

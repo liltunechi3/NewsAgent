@@ -2,12 +2,13 @@ const config = require('./config');
 const db = require('./database');
 const { fetchAllRss } = require('./sources/rss-fetcher');
 const { scrapeAll } = require('./sources/web-scraper');
-const { summarizeAll } = require('./summarizer');
-const { curate, formatDigest, jakartaIsoDate } = require('./formatter');
+const { summarizeUntil } = require('./summarizer');
+const { rankArticles } = require('./ranker');
+const { curate, filterFresh, formatDigest, jakartaIsoDate } = require('./formatter');
 const { sendDigest } = require('./whatsapp-sender');
 
 /**
- * Full pipeline: fetch -> dedupe/store -> summarize -> curate -> send.
+ * Full pipeline: fetch -> dedupe/store -> rank by relevance -> summarize the top few -> send.
  * Set DRY_RUN=1 to print the digest without sending or marking articles as sent.
  */
 async function runDigest({ dryRun = process.env.DRY_RUN === '1' } = {}) {
@@ -18,16 +19,17 @@ async function runDigest({ dryRun = process.env.DRY_RUN === '1' } = {}) {
     const added = store.saveArticles(fetched);
     console.log(`[fetch] ${fetched.length} articles (${rss.length} rss, ${scraped.length} scraped), ${added} new`);
 
-    const pending = store.getUnsummarized(config.maxCandidates);
-    const ok = await summarizeAll(pending, (a, s) => store.saveSummary(a.id, s));
-    console.log(`[summarize] ${ok}/${pending.length} summarized`);
+    const pool = filterFresh(store.getUnsent(config.maxCandidates));
+    const ranked = await rankArticles(pool, { count: config.digestMax });
+    const shortlist = curate(ranked, { max: config.digestMax + config.rankBackups });
+    const picked = await summarizeUntil(shortlist, config.digestMax, (a, s) => store.saveSummary(a.id, s));
+    console.log(`[digest] ${pool.length} candidates, ${shortlist.length} shortlisted, ${picked.length} ready`);
 
-    const picked = curate(store.getUnsentSummarized());
     if (picked.length === 0) {
       console.log('[digest] nothing to send');
       return { sent: 0 };
     }
-    if (picked.length < config.digestMin) console.warn(`[digest] only ${picked.length} articles (target ${config.digestMin}-${config.digestMax})`);
+    if (picked.length < config.digestMin) console.warn(`[digest] only ${picked.length} articles (target ${config.digestMax})`);
 
     const message = formatDigest(picked);
     if (dryRun) {
