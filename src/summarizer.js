@@ -40,16 +40,23 @@ async function viaClaude(article, anthropic = getClient()) {
 async function viaGemini(article, http = axios) {
   if (!config.geminiApiKey) throw new Error('GEMINI_API_KEY is not set');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent`;
-  const { data } = await http.post(
-    url,
-    {
-      systemInstruction: { parts: [{ text: SYSTEM }] },
-      contents: [{ role: 'user', parts: [{ text: userPrompt(article) }] }],
-      // Generous token cap: Gemini 2.5 models count internal "thinking" tokens against it.
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 2048 },
-    },
-    { headers: { 'x-goog-api-key': config.geminiApiKey }, timeout: 30000 }
-  );
+  let data;
+  try {
+    ({ data } = await http.post(
+      url,
+      {
+        systemInstruction: { parts: [{ text: SYSTEM }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt(article) }] }],
+        // Generous token cap: Gemini 2.5 models count internal "thinking" tokens against it.
+        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 2048 },
+      },
+      { headers: { 'x-goog-api-key': config.geminiApiKey }, timeout: 30000 }
+    ));
+  } catch (err) {
+    // axios only reports "status code 400"; Google's JSON body says why.
+    const detail = err.response?.data?.error?.message || JSON.stringify(err.response?.data || '').slice(0, 300);
+    throw new Error(detail ? `Gemini ${err.response?.status || ''}: ${detail}` : err.message);
+  }
   const parts = data?.candidates?.[0]?.content?.parts;
   if (!parts) throw new Error(`Gemini returned no content (${data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || 'unknown'})`);
   return parts.map((p) => p.text || '').join('');

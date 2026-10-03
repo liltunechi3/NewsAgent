@@ -93,3 +93,8 @@ test('sendDigest validates the phone number', async () => {
   await assert.rejects(sendDigest('hi', { provider: 'fonnte', phone: '+62 812' }), /international format/);
   await assert.rejects(sendDigest('hi', { provider: 'fonnte' }), /WHATSAPP_PHONE/);
 });
+
+test('Gemini HTTP errors include the API error message', async () => {
+  const http = { post: async () => { throw Object.assign(new Error('Request failed with status code 400'), { response: { status: 400, data: { error: { message: 'API key not valid' } } } }); } };
+  await assert.rejects(summarizeArticle(art(1), { provider: 'gemini', http }), /Gemini 400: API key not valid/);
+});
