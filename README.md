@@ -2,7 +2,7 @@
 
 Daily digital marketing news digest, in Bahasa Indonesia, delivered to WhatsApp at 10:00 Jakarta time.
 
-**Pipeline:** fetch (5 RSS + 4 scraped sites) → dedupe in SQLite → summarize with Claude (headline + insight + action) → curate 5–8 articles → send via WhatsApp.
+**Pipeline:** fetch (11 RSS feeds + 2 scraped sites) → dedupe in SQLite → Claude picks the 5 most relevant to digital marketing (one cheap call over up to 30 candidates) → only those 5 are summarized → send via WhatsApp.
 
 ## Quick start
 
@@ -15,6 +15,8 @@ npm start                # real run
 ```
 
 ## Summaries (Claude)
+
+Each article is rewritten in casual, easy-to-follow Bahasa Indonesia: a headline, a short anecdote/analogy (marked as an illustration, no invented facts), an actionable insight, and exactly 5 takeaways. Edit the `SYSTEM` prompt in `src/summarizer.js` to change tone or structure. A digest has 5 articles (change with `DIGEST_MAX`); ranking prompt lives in `src/ranker.js` and favors SEO, ads, social, content, email/CRM, analytics and AI-for-marketing, and down-ranks event promos, job posts and thin vendor announcements. If a chosen article fails to summarize, the next-ranked one takes its place. Cost is roughly $0.025 per digest (about 200 digests per $5 on Haiku).
 
 Summaries use Claude via the Anthropic API. The default model is `claude-haiku-4-5` (cheapest; roughly $1/month at ~16 articles/day). Override it with `ANTHROPIC_MODEL`. Larger models cost more and think before answering, which can need a higher `max_tokens` in `src/summarizer.js`.
 
