@@ -46,5 +46,11 @@ module.exports = {
   scrapeSources: [
     { name: 'BrandLoom', url: 'https://brandloom.ai/blog', category: 'AI in Marketing', selector: 'article a, h2 a, h3 a' },
     { name: 'ALM Corp', url: 'https://almcorp.com/blog/', category: 'Marketing News', selector: 'article a, h2 a, h3 a' },
+    // Listing pages. Each is checked for an advertised RSS feed first (gives dates), else scraped for links.
+    // Unverified from the build sandbox: a page that fails is logged as "[scrape] <name> failed" and skipped.
+    { name: 'Meta for Business', url: 'https://www.facebook.com/business/news/facebook', category: 'Social Media Ads' },
+    { name: 'AdManage.ai', url: 'https://admanage.ai/blog', category: 'Paid Ads' },
+    { name: 'SocialBee', url: 'https://socialbee.com/blog/', category: 'Social Media' },
+    { name: 'Dentsu Indonesia', url: 'https://www.dentsu.com/id/en/insights/our-blog/', category: 'Marketing Insights' },
   ],
 };

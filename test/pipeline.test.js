@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const db = require('../src/database');
-const { extractArticles } = require('../src/sources/web-scraper');
+const { extractArticles, discoverFeed, scrapeSite } = require('../src/sources/web-scraper');
 const { parseSummary, summarizeArticle, summarizeUntil } = require('../src/summarizer');
 const { rankArticles, parseRanking } = require('../src/ranker');
 const { curate, formatDigest, chunkMessage } = require('../src/formatter');
@@ -251,4 +251,34 @@ test('sendDigest logs each bubble verdict and pauses between two bubbles', async
   assert.ok(stamps[1] - stamps[0] >= 50);
   assert.strictEqual(logs.filter((l) => l.startsWith('[whatsapp] bubble')).length, 2);
   assert.ok(logs.every((l) => !l.includes('628123456789')));   // phone number never logged
+});
+
+test('discoverFeed finds an advertised RSS/Atom feed and resolves relative URLs', () => {
+  const html = '<html><head><link rel="alternate" type="application/rss+xml" href="/blog/feed/"><link rel="alternate" type="text/html" href="/x"></head></html>';
+  assert.strictEqual(discoverFeed(html, 'https://site.com/blog/'), 'https://site.com/blog/feed/');
+  assert.strictEqual(discoverFeed('<link rel="alternate" type="application/atom+xml" href="https://cdn.site.com/a.xml">', 'https://site.com/'), 'https://cdn.site.com/a.xml');
+  assert.strictEqual(discoverFeed('<html><head></head></html>', 'https://site.com/'), null);
+});
+
+test('scrapeSite prefers an advertised feed, and falls back to links when it is missing or broken', async () => {
+  const source = { name: 'T', url: 'https://site.com/blog/', category: 'c' };
+  const page = '<link rel="alternate" type="application/rss+xml" href="/feed"><article><a href="/blog/a-long-enough-article-title-here">A long enough article title here</a></article>';
+  const get = async () => ({ data: page });
+  const dated = [{ title: 'From feed', link: 'https://site.com/blog/x', source: 'T', publishedAt: '2026-10-02T00:00:00Z' }];
+
+  assert.deepStrictEqual(await scrapeSite(source, 5, { get, rss: async () => dated }), dated);
+
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const broken = await scrapeSite(source, 5, { get, rss: async () => { throw new Error('bad xml'); } });
+    assert.strictEqual(broken[0].link, 'https://site.com/blog/a-long-enough-article-title-here');
+    const empty = await scrapeSite(source, 5, { get, rss: async () => [] });
+    assert.strictEqual(empty.length, 1);
+  } finally {
+    console.warn = warn;
+  }
+
+  const noFeed = await scrapeSite(source, 5, { get: async () => ({ data: page.replace(/<link[^>]*>/, '') }), rss: async () => { throw new Error('should not be called'); } });
+  assert.strictEqual(noFeed.length, 1);
 });

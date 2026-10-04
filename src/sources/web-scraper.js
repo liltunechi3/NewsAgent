@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { fetchRss } = require('./rss-fetcher');
 
 const MIN_TITLE_LEN = 25;
 const SKIP_PATH = /\/(tag|tags|category|categories|author|page|about|contact|privacy|terms|login|signup)(\/|$)/i;
@@ -33,11 +34,36 @@ function extractArticles(html, source, perSite = 5) {
   return out;
 }
 
-async function scrapeSite(source, perSite = 5) {
-  const { data } = await axios.get(source.url, {
+/** Finds the RSS/Atom feed a page advertises in <link rel="alternate">, as an absolute URL (or null). */
+function discoverFeed(html, pageUrl) {
+  const $ = cheerio.load(html);
+  const href = $('link[rel="alternate"]')
+    .filter((_, el) => /(rss|atom)\+xml/i.test($(el).attr('type') || ''))
+    .first()
+    .attr('href');
+  if (!href) return null;
+  try { return new URL(href, pageUrl).href; } catch { return null; }
+}
+
+/**
+ * Listing pages often advertise a feed, which gives dates and summaries that plain link-scraping cannot.
+ * Try the advertised feed first and fall back to scraping the page's links.
+ */
+async function scrapeSite(source, perSite = 5, deps = {}) {
+  const { get = axios.get, rss = fetchRss } = deps;
+  const { data } = await get(source.url, {
     timeout: 15000,
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DMNewsAgent/1.0)', Accept: 'text/html' },
   });
+  const feedUrl = discoverFeed(data, source.url);
+  if (feedUrl) {
+    try {
+      const items = await rss({ ...source, url: feedUrl }, perSite);
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.warn(`[scrape] ${source.name} feed ${feedUrl} failed (${err.message}); scraping links instead`);
+    }
+  }
   return extractArticles(data, source, perSite);
 }
 
@@ -50,4 +76,4 @@ async function scrapeAll(sources, perSite) {
   });
 }
 
-module.exports = { extractArticles, scrapeSite, scrapeAll };
+module.exports = { extractArticles, discoverFeed, scrapeSite, scrapeAll };
